@@ -14,80 +14,83 @@ def preprocess_string(s):
 
 def validate_input(fromString, toString):
     if not fromString or not toString:
-        return False, "One or both strings are null or empty."
+        return False
     if len(fromString) < 3 or len(toString) < 3:
-        return False, "Both strings must have a length of at least 3."
-    return True, None
+        return False
+    return True
 
 def fuzzy_match_percentage(fromString, toString):
-    is_valid, error_message = validate_input(fromString, toString)
+    is_valid = validate_input(fromString, toString)
     if not is_valid:
-        return 0.0, error_message
-
-    try:
-        fuzzy_trigram = algorithims.trigram(fromString,toString)
-        fuzzy_cosine = algorithims.cosine(fromString,toString)
-        
-        return fuzzy_trigram, fuzzy_cosine, 
-    except Exception as e:
-        return 0.0, f"An error occurred: {str(e)}"
+        return "Validation Failed","Validation Failed" # Return default values when validation fails
+    else:
+        try:
+            fuzzy_trigram = algorithims.trigram(fromString, toString)
+            fuzzy_cosine = algorithims.cosine(fromString, toString)
+            
+            return fuzzy_trigram, fuzzy_cosine
+        except Exception as e:
+            return 0.0,0.0
 
 def difflib_percentage(fromString, toString):
-    is_valid, error_message = validate_input(fromString, toString)
+    is_valid = validate_input(fromString, toString)
     if not is_valid:
-        return 0.0, error_message
+        return "Validation Failed"
+    else:
 
-    try:
-        matcher = SequenceMatcher(None, fromString, toString)
-        difflib_p = matcher.ratio()
+        try:
+            matcher = SequenceMatcher(None, fromString, toString)
+            difflib_p = matcher.ratio()
 
-        return difflib_p
-    except Exception as e:
-        return 0.0, f"An error occurred: {str(e)}"
+            return difflib_p
+        except Exception as e:
+            return 0.0
     
 def sklearn_cosine(fromString, toString):
-    is_valid, error_message = validate_input(fromString, toString)
+    is_valid = validate_input(fromString, toString)
     if not is_valid:
-        return 0.0, error_message
+        return "Validation Failed"
+    else:
+        try:
+            vectorizer = CountVectorizer().fit_transform([fromString, toString])
+            cosine_similarity_matrix = cosine_similarity(vectorizer)
+            sklearn_cosine = cosine_similarity_matrix[0, 1]
 
-    try:
-        vectorizer = CountVectorizer().fit_transform([fromString, toString])
-        cosine_similarity_matrix = cosine_similarity(vectorizer)
-        sklearn_cosine = cosine_similarity_matrix[0, 1]
-
-        return sklearn_cosine
-    except Exception as e:
-        return 0.0, f"An error occurred: {str(e)}"
+            return sklearn_cosine
+        except Exception as e:
+            return 0.0
 
 @app.route('/stringmatch', methods=['POST'])
 def fuzzy_match():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    if 'fromString' not in data or 'toString' not in data:
-        return jsonify({'error': 'Both "fromString" and "toString" must be provided in the request'}), 400
+        if 'fromString' not in data or 'toString' not in data:
+            return jsonify({'error': 'Both "fromString" and "toString" must be provided in the request'}), 400
 
-    fromString = data['fromString']
-    toString = data['toString']
+        fromString = data['fromString']
+        toString = data['toString']
+        
+        fromString = preprocess_string(fromString)
+        toString = preprocess_string(toString)
+        
+        print(fromString, toString)
     
-    fromString = preprocess_string(fromString)
-    toString = preprocess_string(toString)
-    
-    print(fromString, toString)
-   
+        fuzzy_trigram, fuzzy_cosine = fuzzy_match_percentage(fromString, toString)
+        difflib_percentage_val = difflib_percentage(fromString, toString)
+        sklearn_cosine_val = sklearn_cosine(fromString, toString)
+        
 
-    fuzzy_trigram, fuzzy_cosine = fuzzy_match_percentage(fromString, toString)
-    difflib_percentage_val = difflib_percentage(fromString, toString)
-    sklearn_cosine = difflib_percentage(fromString, toString)
-    
+        response = {
+            'fuzzy_trigram_percentage': fuzzy_trigram,
+            'fuzzy_cosine_percentage': fuzzy_cosine,
+            'sklearn_cosine_percentage': sklearn_cosine_val,
+            'difflib_percentage': difflib_percentage_val
+        }
 
-    response = {
-        'fuzzy_trigram_percentage': fuzzy_trigram * 100,
-        'fuzzy_cosine_percentage': fuzzy_cosine,
-        'sklearn_cosine_percentage': sklearn_cosine,
-        'difflib_percentage': difflib_percentage_val * 100
-    }
-
-    return jsonify(response)
+        return jsonify(response)
+    except Exception as e:
+         return "Interval Server Error :" + str(e), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
