@@ -6,6 +6,6 @@ jsonify==0.5
 
 numpy==1.21.5
 scikit-learn==1.0.2
-scipy==1.11.3
+scipy==1.7.2
 sklearn==0.0.post11
 gunicorn==19.7.1
