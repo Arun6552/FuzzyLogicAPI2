@@ -59,7 +59,7 @@ def sklearn_cosine(fromString, toString):
     except Exception as e:
         return 0.0, f"An error occurred: {str(e)}"
 
-@app.route('/fuzzy-match', methods=['POST'])
+@app.route('/stringmatch', methods=['POST'])
 def fuzzy_match():
     data = request.get_json()
 
